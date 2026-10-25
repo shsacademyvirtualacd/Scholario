@@ -5,6 +5,7 @@ import { onRequestDelete as delHandler } from '../functions/api/notes/del/[noteI
 import { onRequestGet as auditR2Handler } from '../functions/api/admin/audit-r2';
 import { onRequestPost as sageChatPostHandler, onRequestOptions as sageChatOptionsHandler } from '../functions/api/sage/chat';
 import { onRequestPost as sageTranscribePostHandler, onRequestOptions as sageTranscribeOptionsHandler } from '../functions/api/sage/transcribe';
+import { onRequestPost as sageTtsPostHandler, onRequestOptions as sageTtsOptionsHandler } from '../functions/api/sage/tts';
 import { onRequestPost as testUploadHandler } from '../functions/api/tests/upload';
 import { onRequestPost as createTestHandler } from '../functions/api/admin/tests/create-test';
 import { onRequestGet as testViewHandler } from '../functions/api/tests/view/[testId]';
@@ -215,6 +216,34 @@ export default {
           } as any);
         } catch (err: any) {
           return new Response(JSON.stringify({ error: err.message || 'Audio transcription error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle Sage AI Server-Side TTS Route
+    if (normalizedPath === '/api/sage/tts') {
+      if (request.method === 'OPTIONS') {
+        return await sageTtsOptionsHandler();
+      }
+      if (request.method === 'POST') {
+        try {
+          return await sageTtsPostHandler({
+            request,
+            env,
+            params: {},
+            waitUntil: ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : () => {},
+            next: () => Promise.resolve(new Response('')),
+            data: {},
+          } as any);
+        } catch (err: any) {
+          return new Response(JSON.stringify({ error: err?.message || 'TTS synthesis error' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
           });

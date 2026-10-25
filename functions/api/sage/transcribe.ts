@@ -1,6 +1,7 @@
 import type { EventContext } from '@cloudflare/workers-types';
 import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { SAGE_AI_MODELS } from '../../../src/lib/knowledgeBaseService';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -48,7 +49,7 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
       apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build-cf',
+          'User-Agent': 'aistudio-build',
         },
       },
     });
@@ -62,8 +63,11 @@ export async function onRequestPost(context: EventContext<Env, any, any>): Promi
     const rawModel =
       env?.GEMINI_MODEL ||
       (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
-      'gemini-3.8-flash';
-    const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+      SAGE_AI_MODELS.TRANSCRIBE;
+    const primaryModel = rawModel.trim().replace(/^models\//i, '') || SAGE_AI_MODELS.TRANSCRIBE;
+    const candidateModels = Array.from(
+      new Set([primaryModel, SAGE_AI_MODELS.PRIMARY, SAGE_AI_MODELS.FALLBACK])
+    );
 
     const prompt = `Listen to this voice message from a teacher or student carefully.
 Transcribe what the person said verbatim.
@@ -72,33 +76,43 @@ Transcribe what the person said verbatim.
 - If the audio is empty, silent, or only background static noise, respond with strictly: [EMPTY]`;
 
     let rawTranscript = '';
-    try {
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  data: cleanBase64,
-                  mimeType: cleanMime,
+    let lastErr: any = null;
+    for (const modelId of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelId,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: cleanBase64,
+                    mimeType: cleanMime,
+                  },
                 },
-              },
-              {
-                text: prompt,
-              },
-            ],
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          config: {
+            temperature: 0.1,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
-        ],
-        config: {
-          temperature: 0.1,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        },
-      });
-      rawTranscript = (response.text || '').trim();
-    } catch (modelErr: any) {
-      console.error('[Cloudflare Pages Sage Transcribe Model Error]:', modelErr);
+        });
+        rawTranscript = (response.text || '').trim();
+        lastErr = null;
+        break;
+      } catch (err: any) {
+        lastErr = err;
+        console.warn(`[Sage Transcribe] Model ${modelId} failed, trying fallback:`, err?.message || err);
+      }
+    }
+
+    if (lastErr && !rawTranscript) {
+      console.error('[Cloudflare Pages Sage Transcribe Model Error]:', lastErr);
       return new Response(
         JSON.stringify({ error: 'Sage is temporarily unavailable. Please try again in a moment.' }),
         { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }

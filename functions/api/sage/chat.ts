@@ -3,6 +3,7 @@ import type { Env } from '../../env';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { adminToolDeclarations, executeAdminDataQuery } from '../../../src/lib/adminDataTools';
+import { SAGE_AI_MODELS } from '../../../src/lib/knowledgeBaseService';
 
 interface ChatMessagePayload {
   role: 'user' | 'assistant' | 'model';
@@ -130,8 +131,9 @@ ${pageContextPrompt}
 Key Guidelines:
 1. **Be Concise & Direct by Default**: Keep answers short, direct, and to the point (typically 1-3 focused paragraphs or bullet points). Avoid conversational fluff or unnecessary preambles.
 2. **Detailed Drafts on Request Only**: Provide comprehensive documents, full essay-length breakdowns, or complete circular notices ONLY when the user explicitly requests a "full draft", "complete notice", "complete document", "in-depth explanation", or similar.
-3. **Format with Clean Markdown & Selective LaTeX Math**:
+3. **Format with Clean Markdown & Math-First KaTeX**:
    - Use standard Markdown with proper spacing (e.g. "**Q1.** What is..." with a space after bolding, NEVER unescaped or malformed raw tags).
+   - For mathematics and numerical physics/chemistry derivations, prioritize clean KaTeX step-by-step equations (`$...$` inline and `$$...$$` display blocks) with minimal conversational wording and more maths.
    - ONLY wrap genuine mathematical or scientific formulas with "$formula$" or "$$equation$$" (e.g. "$E = mc^2$", "$v = u + at$").
    - NEVER wrap plain alphanumeric genetics notation (e.g. Tt, TT, tt, F1, F2), percentages (e.g. 0%, 25%, 50%, 75%, 100%), ratios (3:1, 9:3:3:1), or option letters (A, B, C, D) inside math delimiters. Keep them as normal text so they render in standard readable font.
 4. **Complete Output for Quizzes & Tests**:
@@ -227,69 +229,91 @@ Key Guidelines:
       const rawModel =
         env?.GEMINI_MODEL ||
         (typeof process !== 'undefined' ? process.env?.GEMINI_MODEL : undefined) ||
-        'gemini-3.8-flash';
-      const targetModel = rawModel.trim().replace(/^models\//i, '') || 'gemini-3.8-flash';
+        SAGE_AI_MODELS.PRIMARY;
+      const primaryModel = rawModel.trim().replace(/^models\//i, '') || SAGE_AI_MODELS.PRIMARY;
+      const fallbackModel = SAGE_AI_MODELS.FALLBACK;
+      const candidateModels =
+        primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
 
-      if (isAdmin) {
-        let currentContents: any[] = [...contents];
-        const maxTurns = 3;
-        let turn = 0;
-        let finalResponseSent = false;
+      const runWithModel = async (modelId: string) => {
+        if (isAdmin) {
+          let currentContents: any[] = [...contents];
+          const maxTurns = 3;
+          let turn = 0;
+          let finalResponseSent = false;
 
-        while (turn < maxTurns) {
-          turn++;
-          const genRes = await ai.models.generateContent({
-            model: targetModel,
-            contents: currentContents,
-            config: {
-              systemInstruction,
-              tools: [{ functionDeclarations: adminToolDeclarations }],
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            },
-          });
-
-          if (genRes.functionCalls && genRes.functionCalls.length > 0) {
-            const toolParts: any[] = [];
-            for (const call of genRes.functionCalls) {
-              const toolName = call.name || '';
-              const data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
-              toolParts.push({
-                functionResponse: {
-                  name: toolName,
-                  response: {
-                    result: data,
-                  },
-                  ...(call.id ? { id: call.id } : {}),
-                },
-              });
-            }
-
-            const modelCandidate = genRes.candidates?.[0]?.content;
-            if (modelCandidate) {
-              currentContents.push(modelCandidate);
-            }
-            currentContents.push({
-              role: 'user',
-              parts: toolParts,
+          while (turn < maxTurns) {
+            turn++;
+            const genRes = await ai.models.generateContent({
+              model: modelId,
+              contents: currentContents,
+              config: {
+                systemInstruction,
+                tools: [{ functionDeclarations: adminToolDeclarations }],
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+              },
             });
-          } else {
-            if (genRes.text) {
-              const words = genRes.text.split(' ');
-              for (let i = 0; i < words.length; i += 3) {
-                const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
-                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
-                await new Promise((r) => setTimeout(r, 15));
-              }
-              finalResponseSent = true;
-            }
-            break;
-          }
-        }
 
-        if (!finalResponseSent) {
+            if (genRes.functionCalls && genRes.functionCalls.length > 0) {
+              const toolParts: any[] = [];
+              for (const call of genRes.functionCalls) {
+                const toolName = call.name || '';
+                const data = await executeAdminDataQuery(toolName, call.args || {}, supabase);
+                toolParts.push({
+                  functionResponse: {
+                    name: toolName,
+                    response: {
+                      result: data,
+                    },
+                    ...(call.id ? { id: call.id } : {}),
+                  },
+                });
+              }
+
+              const modelCandidate = genRes.candidates?.[0]?.content;
+              if (modelCandidate) {
+                currentContents.push(modelCandidate);
+              }
+              currentContents.push({
+                role: 'user',
+                parts: toolParts,
+              });
+            } else {
+              if (genRes.text) {
+                const words = genRes.text.split(' ');
+                for (let i = 0; i < words.length; i += 3) {
+                  const chunk = words.slice(i, i + 3).join(' ') + (i + 3 < words.length ? ' ' : '');
+                  await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
+                  await new Promise((r) => setTimeout(r, 15));
+                }
+                finalResponseSent = true;
+              }
+              break;
+            }
+          }
+
+          if (!finalResponseSent) {
+            const streamResponse = await ai.models.generateContentStream({
+              model: modelId,
+              contents: currentContents,
+              config: {
+                systemInstruction,
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+              },
+            });
+
+            for await (const chunk of streamResponse) {
+              const chunkText = chunk.text;
+              if (chunkText) {
+                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
+              }
+            }
+          }
+        } else {
+          // Teacher/Student flow (no tools)
           const streamResponse = await ai.models.generateContentStream({
-            model: targetModel,
-            contents: currentContents,
+            model: modelId,
+            contents,
             config: {
               systemInstruction,
               thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -303,23 +327,23 @@ Key Guidelines:
             }
           }
         }
-      } else {
-        // Teacher/Student flow (no tools)
-        const streamResponse = await ai.models.generateContentStream({
-          model: targetModel,
-          contents,
-          config: {
-            systemInstruction,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        });
+      };
 
-        for await (const chunk of streamResponse) {
-          const chunkText = chunk.text;
-          if (chunkText) {
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ text: chunkText })}\n\n`));
-          }
+      let lastErr: any = null;
+      let succeeded = false;
+      for (const modelId of candidateModels) {
+        try {
+          await runWithModel(modelId);
+          succeeded = true;
+          break;
+        } catch (err: any) {
+          lastErr = err;
+          console.warn(`[Sage Chat] Model ${modelId} failed, attempting fallback if available:`, err?.message || err);
         }
+      }
+
+      if (!succeeded && lastErr) {
+        throw lastErr;
       }
 
       await writer.write(encoder.encode('data: [DONE]\n\n'));

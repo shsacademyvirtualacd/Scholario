@@ -8,9 +8,18 @@
  * 4. Fallback search mechanism when database vector extension is pending
  */
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
-export const SAGE_CHAT_MODEL = DEFAULT_GEMINI_MODEL;
-export const SAGE_EMBEDDING_MODEL = 'gemini-embedding-001';
+export const SAGE_AI_MODELS = {
+  PRIMARY: 'gemini-3.8-flash',
+  FALLBACK: 'gemini-3.1-flash-lite',
+  TRANSCRIBE: 'gemini-3.5-transcribe',
+  TTS: 'gemini-3.8-flash-lite-tts',
+  EMBEDDING: 'gemini-embedding-2-preview',
+} as const;
+
+export const DEFAULT_GEMINI_MODEL = SAGE_AI_MODELS.PRIMARY;
+export const SAGE_CHAT_MODEL = SAGE_AI_MODELS.PRIMARY;
+export const SAGE_FALLBACK_MODEL = SAGE_AI_MODELS.FALLBACK;
+export const SAGE_EMBEDDING_MODEL = SAGE_AI_MODELS.EMBEDDING;
 export const SAGE_EMBEDDING_DIMENSIONS = 768;
 
 /**
