@@ -172,10 +172,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           id="main-navbar-pill"
           aria-label="Main Navigation"
           style={{
-            backdropFilter: 'none',
-            WebkitBackdropFilter: 'none',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
-          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white dark:bg-[#141416] text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-black/[0.08] dark:border-white/[0.14] shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.45)]"
+          className="pointer-events-auto w-full transition-all duration-300 ease-out bg-white/90 text-[#111111] dark:text-white rounded-[28px] sm:rounded-[32px] border border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
         >
           <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-6">
             {/* Left: Scholario logo & wordmark */}
@@ -362,10 +362,10 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
           aria-modal="true"
           aria-label="Navigation Menu"
           style={{
-            backdropFilter: 'none',
-            WebkitBackdropFilter: 'none',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
-          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white dark:bg-[#141416] text-[#111111] dark:text-white rounded-[28px] border border-black/[0.08] dark:border-white/[0.14] shadow-[0_8px_32px_rgba(0,0,0,0.12)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
+          className={`pointer-events-auto mt-2 w-full sm:self-end sm:max-w-[420px] lg:hidden bg-white/95 text-[#111111] dark:text-white rounded-[28px] border border-black/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.12)] max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain transition-all duration-300 ease-out origin-top ${
             menuOpen
               ? 'opacity-100 translate-y-0 visible scale-100'
               : 'opacity-0 -translate-y-2 pointer-events-none invisible scale-[0.98]'
@@ -497,7 +497,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
                 id="nav-register-btn"
                 to="/register"
                 onClick={() => setMenuOpen(false)}
-                className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-base shadow-xs active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                className="w-full h-12 min-h-[48px] rounded-full bg-[#F2C230] hover:bg-[#E5B520] text-[#111111] font-extrabold text-base shadow-[0_4px_16px_rgba(242,194,48,0.35)] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
               >
                 <UserPlus size={18} className="text-[#111111]" />
                 <span className="text-[#111111]">Register &amp; Apply</span>
@@ -586,18 +586,30 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAbout, onOpenContact 
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
 
-      {/* ── Dark-Mode-Only Surface & Contrast Overrides ── */}
+      {/* ── Dark-Mode-Only Glassmorphism & Contrast Overrides ── */}
       <style>{`
+        /* Dark mode glassmorphism: Navbar Pill & Hamburger Menu Card */
         .dark #main-navbar-pill,
         [data-theme="dark"] #main-navbar-pill,
         .dark #mobile-nav-card,
         [data-theme="dark"] #mobile-nav-card {
-          background: #141416 !important;
+          background: rgba(20, 20, 22, 0.90) !important;
           background-image: none !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
+          backdrop-filter: blur(16px) !important;
+          -webkit-backdrop-filter: blur(16px) !important;
           border: 1px solid rgba(255, 255, 255, 0.14) !important;
-          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Fallback for browsers without backdrop-filter in dark mode only */
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+          .dark #main-navbar-pill,
+          [data-theme="dark"] #main-navbar-pill,
+          .dark #mobile-nav-card,
+          [data-theme="dark"] #mobile-nav-card {
+            background: rgba(34, 34, 34, 0.92) !important;
+            background-image: none !important;
+          }
         }
 
         /* Backdrop behind open menu: rgba(0,0,0,0.30) with NO blur on backdrop itself in dark mode */

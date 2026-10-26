@@ -121,7 +121,7 @@ const FeaturesSection: React.FC = () => {
         </div>
 
         {/* ── 2. Filters (Single row on tablet & desktop, horizontally scrollable on mobile) ── */}
-        <div className="sticky top-[68px] sm:top-[74px] z-30 py-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 bg-white dark:bg-[#0E0E0E] transition-colors mb-4">
+        <div className="sticky top-[68px] sm:top-[74px] z-30 py-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 backdrop-blur-xl bg-white/85 dark:bg-[#0E0E0E]/85 transition-colors mb-4">
           <div className="relative w-full">
             <div className="flex items-center sm:justify-center gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-1 -mx-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {CATEGORIES.map((cat) => {

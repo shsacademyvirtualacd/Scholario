@@ -715,24 +715,22 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
         title={interactive ? `Tap ${displayLabel} to open profile or say hello!` : `${displayLabel} — Sage AI`}
         id={`sage-avatar-${size}-${characterId}`}
       >
-        {/* Base animated 2D SVG character (visible only when WebGL mirror canvas isn't attached) */}
-        {!headerCanvasRef && (
-          <div
-            className={`flex items-center justify-center w-full h-full bg-transparent ${
-              avatarState === 'poke' || avatarState === 'success'
-                ? 'animate-bounce'
-                : 'animate-[pulse_3.4s_ease-in-out_infinite]'
-            }`}
-          >
-            <SageCharacterSvg
-              characterId={characterId}
-              emotion={emotion}
-              avatarState={avatarState}
-              svgSize={sizeConfig.svgSize}
-              uid={`${size}-${emotion}`}
-            />
-          </div>
-        )}
+        {/* Base animated 2D SVG character (visible when WebGL mirror canvas isn't attached) */}
+        <div
+          className={`flex items-center justify-center w-full h-full bg-transparent ${
+            avatarState === 'poke' || avatarState === 'success'
+              ? 'animate-bounce'
+              : 'animate-[pulse_3.4s_ease-in-out_infinite]'
+          }`}
+        >
+          <SageCharacterSvg
+            characterId={characterId}
+            emotion={emotion}
+            avatarState={avatarState}
+            svgSize={sizeConfig.svgSize}
+            uid={`${size}-${emotion}`}
+          />
+        </div>
 
         {/* Live WebGL mirror canvas for the top-left header profile picture */}
         {headerCanvasRef && (
@@ -740,15 +738,8 @@ export const SageAvatar: React.FC<SageAvatarProps> = ({
             ref={headerCanvasRef}
             width={96}
             height={96}
-            style={{
-              background: 'transparent',
-              backgroundColor: 'transparent',
-              boxShadow: 'none',
-              border: 'none',
-              filter: 'none',
-              backdropFilter: 'none',
-            }}
-            className="w-full h-full object-contain pointer-events-none bg-transparent border-0 shadow-none ring-0"
+            style={{ background: 'transparent' }}
+            className="absolute inset-0 w-full h-full object-contain rounded-full pointer-events-none bg-transparent"
           />
         )}
       </div>

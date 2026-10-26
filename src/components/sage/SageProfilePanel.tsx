@@ -344,23 +344,12 @@ export const SageProfilePanel: React.FC<SageProfilePanelProps> = ({
 
         {/* Scrollable Content with 24px Bottom Padding */}
         <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6 space-y-4">
-          {/* 1. Companion Identity Section with 180px Live 3D Portrait Floating Directly on Drawer Surface */}
-          <div
-            style={{
-              background: 'transparent',
-              backgroundColor: 'transparent',
-              boxShadow: 'none',
-              border: 'none',
-              filter: 'none',
-              backdropFilter: 'none',
-            }}
-            className="bg-transparent border-0 shadow-none ring-0 p-2 flex flex-col items-center text-center"
-          >
+          {/* 1. Companion Identity Card with 180px Live 3D Portrait */}
+          <div className="rounded-[24px] bg-white dark:bg-[#18181B] border border-[#E5E5E5] dark:border-[#27272A] p-5 shadow-2xs flex flex-col items-center text-center">
             {/* Large 180px Portrait — Transparent Surface, Never Cropped at Any Scroll Position */}
             <div
               style={{
                 background: 'transparent',
-                backgroundColor: 'transparent',
                 boxShadow: 'none',
                 border: 'none',
                 filter: 'none',

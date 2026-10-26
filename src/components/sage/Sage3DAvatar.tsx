@@ -2240,15 +2240,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
       data-testid="sage-stage-avatar"
       data-compact={compact ? 'true' : 'false'}
       data-character={characterId}
-      style={{
-        background: 'transparent',
-        backgroundColor: 'transparent',
-        boxShadow: 'none',
-        border: 'none',
-        filter: 'none',
-        backdropFilter: 'none',
-      }}
-      className="relative flex flex-col items-center justify-center w-full mx-auto bg-transparent border-0 shadow-none ring-0 select-none pointer-events-none transition-all duration-300"
+      className="relative flex flex-col items-center justify-center w-full mx-auto bg-transparent border-0 shadow-none select-none pointer-events-none transition-all duration-300"
     >
       {/* Centered Frameless Avatar Viewport (Zero white background/border/shadow) */}
       <div
@@ -2259,15 +2251,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
           if (e.key === 'Enter' || e.key === ' ') onPoke?.();
         }}
         title={`Tap ${effectiveLabel} to say hello!`}
-        style={{
-          background: 'transparent',
-          backgroundColor: 'transparent',
-          boxShadow: 'none',
-          border: 'none',
-          filter: 'none',
-          backdropFilter: 'none',
-        }}
-        className={`pointer-events-auto relative flex items-center justify-center shrink-0 mx-auto cursor-pointer bg-transparent border-0 shadow-none ring-0 transition-all duration-200 ${resolvedSizeClasses} ${
+        className={`pointer-events-auto relative flex items-center justify-center shrink-0 mx-auto cursor-pointer bg-transparent border-0 shadow-none transition-all duration-200 ${resolvedSizeClasses} ${
           isSwitchingChar ? 'scale-95 opacity-85' : 'scale-100 opacity-100'
         }`}
       >
@@ -2275,15 +2259,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
         {webglSupported && (
           <div
             ref={mountRef}
-            style={{
-              background: 'transparent',
-              backgroundColor: 'transparent',
-              boxShadow: 'none',
-              border: 'none',
-              filter: 'none',
-              backdropFilter: 'none',
-            }}
-            className={`w-full h-full relative z-10 bg-transparent border-0 shadow-none ring-0 transition-opacity duration-200 ${
+            className={`w-full h-full relative z-10 bg-transparent border-0 shadow-none transition-opacity duration-200 ${
               webglReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           />
@@ -2291,7 +2267,7 @@ export const Sage3DAvatar: React.FC<Sage3DAvatarProps> = ({
 
         {/* 2D Fallback */}
         {(!webglSupported || !webglReady) && (
-          <div className="absolute inset-0 flex items-center justify-center z-0 bg-transparent border-0 shadow-none ring-0">
+          <div className="absolute inset-0 flex items-center justify-center z-0 bg-transparent">
             <Plush2DFallback
               state={state}
               characterId={characterId}
