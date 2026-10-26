@@ -318,14 +318,20 @@ export const ScheduleManagerPage: React.FC = () => {
         }
 
         // Conflict 2: Same cohort slot collision
-        const aClass = taxonomy?.classes?.find((c: any) => c.id === a.class_id || c.id === a.offering?.class_id);
-        const bClass = taxonomy?.classes?.find((c: any) => c.id === b.class_id || c.id === b.offering?.class_id);
+        const aClassId = a.class_id || a.offering?.class_id;
+        const bClassId = b.class_id || b.offering?.class_id;
+        const aClass = taxonomy?.classes?.find((c: any) => c.id === aClassId);
+        const bClass = taxonomy?.classes?.find((c: any) => c.id === bClassId);
         const aBoard = aClass?.board_id || a.offering?.board;
         const bBoard = bClass?.board_id || b.offering?.board;
         const aGrade = aClass?.grade || a.offering?.grade;
         const bGrade = bClass?.grade || b.offering?.grade;
 
-        if (aBoard && bBoard && aBoard === bBoard && String(aGrade) === String(bGrade)) {
+        const isSameCohort =
+          (aClassId && bClassId && aClassId === bClassId) ||
+          (aBoard && bBoard && aBoard === bBoard && String(aGrade) === String(bGrade));
+
+        if (isSameCohort) {
           const aStream = a.stream_id || a.offering?.stream_id;
           const bStream = b.stream_id || b.offering?.stream_id;
           if (!aStream || !bStream || aStream === 'all' || bStream === 'all' || aStream === bStream) {
@@ -495,7 +501,7 @@ export const ScheduleManagerPage: React.FC = () => {
   const handleSaveSlot = async (formData: any) => {
     const isEditMode = !isDuplicateMode && !!editingSlotId;
 
-    if (isEditMode) {
+    if (isEditMode && !formData.allowClash) {
       const conflict = checkSlotConflict(formData, editingSlotId);
       if (conflict) {
         setConflictData(conflict);
@@ -519,6 +525,7 @@ export const ScheduleManagerPage: React.FC = () => {
   const executeSaveSlot = async (formData: any) => {
     const isEditMode = !isDuplicateMode && !!editingSlotId;
     const targetSlotId = isEditMode ? editingSlotId : undefined;
+    const allowClash = Boolean(formData.allowClash);
 
     try {
       const targetDays: number[] =
@@ -538,24 +545,29 @@ export const ScheduleManagerPage: React.FC = () => {
           end_time: formData.end_time,
           room_or_link: formData.room_or_link !== undefined ? formData.room_or_link : null,
           is_cancelled: false,
+          allowClash,
         }));
-        await upsertSlots(slotsToUpsert);
+        await upsertSlots(slotsToUpsert, { allowClash });
       } else {
-        await upsertSlot({
-          id: targetSlotId,
-          offering_id: formData.offering_id || null,
-          custom_title: formData.custom_title || null,
-          class_id: formData.class_id || null,
-          stream_id: formData.stream_id || null,
-          day_of_week: formData.day_of_week as any,
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          room_or_link:
-            formData.room_or_link !== undefined
-              ? formData.room_or_link
-              : selectedSlot?.room_or_link || null,
-          is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
-        });
+        await upsertSlot(
+          {
+            id: targetSlotId,
+            offering_id: formData.offering_id || null,
+            custom_title: formData.custom_title || null,
+            class_id: formData.class_id || null,
+            stream_id: formData.stream_id || null,
+            day_of_week: formData.day_of_week as any,
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            room_or_link:
+              formData.room_or_link !== undefined
+                ? formData.room_or_link
+                : selectedSlot?.room_or_link || null,
+            is_cancelled: formData.is_cancelled !== undefined ? formData.is_cancelled : false,
+            allowClash,
+          },
+          { allowClash }
+        );
       }
 
       if (formData.notify_affected) {

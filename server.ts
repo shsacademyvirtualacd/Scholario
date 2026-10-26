@@ -262,9 +262,9 @@ async function startServer() {
   // ─── Public Roaming Tango Guide Endpoint (/api/public-guide) ────────────────
   const tangoPublicGuideRateMap = new Map<string, { count: number; resetAt: number }>();
   const TANGO_PUBLIC_GUIDE_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-2.0-flash',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
   ] as const;
 
   app.post('/api/public-guide', async (req, res) => {

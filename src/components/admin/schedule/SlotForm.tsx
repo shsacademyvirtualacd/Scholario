@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Loader2,
   Check,
@@ -8,6 +9,7 @@ import {
   BookOpen,
   Calendar,
   Video,
+  User,
   X,
 } from 'lucide-react';
 import { useMobile } from '../../../hooks/useMobile';
@@ -36,6 +38,7 @@ interface SlotFormProps {
     publish_to_news: boolean;
     notify_affected?: boolean;
     days_of_week?: number[];
+    allowClash?: boolean;
   }) => Promise<void> | void;
   onDuplicate?: () => void;
   onCancelDuplicate?: () => void;
@@ -65,6 +68,9 @@ interface ClashItem {
   day: number;
   dayName: string;
   timeRange: string;
+  instructorName: string;
+  clashingSubject: string;
+  clashingClassName: string;
   summary: string;
   detail: string;
 }
@@ -109,10 +115,11 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Clash resolution state
+  // Clash confirmation modal state (opened when user clicks save & clashes exist)
   const [clashState, setClashState] = useState<{
     clashes: ClashItem[];
     cleanDays: number[];
+    allDays: number[];
   } | null>(null);
 
   // Initialize or re-populate from props
@@ -293,87 +300,144 @@ export const SlotForm: React.FC<SlotFormProps> = ({
   }, [isEditMode, dayOfWeek, selectedDays]);
 
   // Clash Checker
-  const checkClashes = (targetDays: number[]): ClashItem[] => {
-    const timeToMins = (t: string) => {
-      if (!t) return 0;
-      const [h = 0, m = 0] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
+  const checkClashes = useCallback(
+    (targetDays: number[]): ClashItem[] => {
+      const timeToMins = (t: string) => {
+        if (!t) return 0;
+        const [h = 0, m = 0] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
 
-    const formStart = timeToMins(startTime);
-    const formEnd = timeToMins(endTime);
-    const formClassId = selectedClassId;
-    const formClass = taxonomy?.classes?.find((c: any) => c.id === formClassId);
-    const formGrade = formClass?.grade;
-    const formBoard = formClass?.board_id;
-    const formStreamId = selectedStreamId && selectedStreamId !== 'all' ? selectedStreamId : null;
-    const formTeacherId = currentOfferingObj?.teacher_id || (currentOfferingObj as any)?.teacher?.id;
-    const formTeacherName = currentOfferingObj?.teacher?.full_name;
-    const currentSlotId = (slot as any)?.id;
+      const formStart = timeToMins(startTime);
+      const formEnd = timeToMins(endTime);
+      const formClassId = selectedClassId;
+      const formClass = taxonomy?.classes?.find((c: any) => c.id === formClassId);
+      const formGrade = formClass?.grade;
+      const formBoard = formClass?.board_id;
+      const formStreamId = selectedStreamId && selectedStreamId !== 'all' ? selectedStreamId : null;
+      const formTeacherId = currentOfferingObj?.teacher_id || (currentOfferingObj as any)?.teacher?.id;
+      const formTeacherName = currentOfferingObj?.teacher?.full_name;
+      const currentSlotId = (slot as any)?.id;
 
-    const detectedClashes: ClashItem[] = [];
+      const detectedClashes: ClashItem[] = [];
 
-    for (const d of targetDays) {
-      const dayName = DAYS.find((item) => item.value === d)?.label || `Day ${d}`;
+      for (const d of targetDays) {
+        const dayName = DAYS.find((item) => item.value === d)?.label || `Day ${d}`;
+        const timeRange = `${formatTime12h(startTime)}–${formatTime12h(endTime)}`;
 
-      for (const s of existingSlots) {
-        if (currentSlotId && s.id === currentSlotId) continue;
-        if (s.is_cancelled) continue;
-        if (s.day_of_week !== d) continue;
+        for (const s of existingSlots) {
+          if (currentSlotId && s.id === currentSlotId) continue;
+          if (s.is_cancelled) continue;
+          if (s.day_of_week !== d) continue;
 
-        const sStart = timeToMins(s.start_time);
-        const sEnd = timeToMins(s.end_time || s.start_time);
-        const isOverlap = Math.max(sStart, formStart) < Math.min(sEnd, formEnd);
-        if (!isOverlap) continue;
+          const sStart = timeToMins(s.start_time);
+          const sEnd = timeToMins(s.end_time || s.start_time);
+          const isOverlap = Math.max(sStart, formStart) < Math.min(sEnd, formEnd);
+          if (!isOverlap) continue;
 
-        const sOffering = offerings.find((o) => o.id === s.offering_id);
-        const sSubject = s.custom_title || sOffering?.subject_name || sOffering?.subject?.name || 'Class';
-        const sTeacherId = sOffering?.teacher_id || (sOffering as any)?.teacher?.id;
-        const sTeacherName = sOffering?.teacher?.full_name || 'Instructor';
-        const sClassId = s.class_id || sOffering?.class_id;
-        const sClass = taxonomy?.classes?.find((c: any) => c.id === sClassId);
-        const sGrade = sClass?.grade || sOffering?.grade;
-        const sBoard = sClass?.board_id || sOffering?.board;
-        const sStreamId = s.stream_id || sOffering?.stream_id || null;
+          const sOffering = offerings.find((o) => o.id === s.offering_id) || (s as any).offering;
+          const sSubject =
+            s.custom_title ||
+            sOffering?.subject_name ||
+            sOffering?.subject?.name ||
+            (typeof sOffering?.subject === 'string' ? sOffering.subject : '') ||
+            'Class';
+          const sTeacherId = sOffering?.teacher_id || (sOffering as any)?.teacher?.id;
+          const sTeacherName = sOffering?.teacher?.full_name || 'Instructor';
+          const sClassId = s.class_id || sOffering?.class_id || (sOffering as any)?.class?.id;
+          const sClass = taxonomy?.classes?.find((c: any) => c.id === sClassId);
+          const sGrade = sClass?.grade || sOffering?.grade || (sOffering as any)?.class?.grade;
+          const sBoard = sClass?.board_id || sOffering?.board || (sOffering as any)?.class?.board_id;
+          const sBoardDef = sBoard ? getBoardDef(sBoard) : null;
+          const sClassName = sClass
+            ? `${sBoardDef?.shortName || ''} ${formatGradeDisplay(sClass.grade, sClass.board_id)}`.trim()
+            : sGrade
+            ? `Grade ${sGrade}`
+            : formGrade
+            ? `Grade ${formGrade}`
+            : '';
+          const sStreamId = s.stream_id || sOffering?.stream_id || null;
 
-        const isSameClass =
-          (formClassId && sClassId && formClassId === sClassId) ||
-          (formBoard && sBoard && formBoard === sBoard && String(formGrade) === String(sGrade));
-        const isSameStream =
-          !formStreamId ||
-          !sStreamId ||
-          formStreamId === 'all' ||
-          sStreamId === 'all' ||
-          formStreamId === sStreamId;
-        const isSameTeacher = Boolean(formTeacherId && sTeacherId && formTeacherId === sTeacherId);
+          const isSameClass =
+            (formClassId && sClassId && formClassId === sClassId) ||
+            (formBoard && sBoard && formBoard === sBoard && String(formGrade) === String(sGrade));
+          const isSameStream =
+            !formStreamId ||
+            !sStreamId ||
+            formStreamId === 'all' ||
+            sStreamId === 'all' ||
+            formStreamId === sStreamId;
+          const isSameTeacher = Boolean(formTeacherId && sTeacherId && formTeacherId === sTeacherId);
 
-        if (isSameTeacher) {
-          detectedClashes.push({
-            day: d,
-            dayName,
-            timeRange: `${formatTime12h(startTime)}–${formatTime12h(endTime)}`,
-            summary: `${dayName} ${formatTime12h(startTime)}–${formatTime12h(endTime)} already has a class`,
-            detail: `Instructor ${formTeacherName || sTeacherName} is already teaching ${sSubject}.`,
-          });
-          break;
-        } else if (isSameClass && isSameStream) {
-          detectedClashes.push({
-            day: d,
-            dayName,
-            timeRange: `${formatTime12h(startTime)}–${formatTime12h(endTime)}`,
-            summary: `${dayName} ${formatTime12h(startTime)}–${formatTime12h(endTime)} already has a class`,
-            detail: `${sSubject} (${sTeacherName}) is already scheduled for Grade ${formGrade || ''}.`,
-          });
-          break;
+          if (isSameTeacher) {
+            const instructorName = formTeacherName || sTeacherName;
+            detectedClashes.push({
+              day: d,
+              dayName,
+              timeRange,
+              instructorName,
+              clashingSubject: sSubject,
+              clashingClassName: sClassName,
+              summary: `${dayName} ${timeRange} already has a class.`,
+              detail: `Instructor ${instructorName} is already teaching ${sSubject}${sClassName ? ` (${sClassName})` : ''}.`,
+            });
+            break;
+          } else if (isSameClass && isSameStream) {
+            const instructorName = sTeacherName;
+            detectedClashes.push({
+              day: d,
+              dayName,
+              timeRange,
+              instructorName,
+              clashingSubject: sSubject,
+              clashingClassName: sClassName,
+              summary: `${dayName} ${timeRange} already has a class.`,
+              detail: `Instructor ${instructorName} is already teaching ${sSubject}${sClassName ? ` (${sClassName})` : ''}.`,
+            });
+            break;
+          }
         }
       }
-    }
 
-    return detectedClashes;
-  };
+      return detectedClashes;
+    },
+    [
+      startTime,
+      endTime,
+      selectedClassId,
+      taxonomy,
+      selectedStreamId,
+      currentOfferingObj,
+      slot,
+      existingSlots,
+      offerings,
+    ]
+  );
+
+  // Live non-blocking clash preview inside the drawer
+  const liveClashes = useMemo(() => {
+    const targetDays = isEditMode ? [dayOfWeek] : selectedDays;
+    if (!selectedClassId || targetDays.length === 0 || !startTime || !endTime || startTime >= endTime) {
+      return [];
+    }
+    if (slotMode === 'offering' && !offeringId) return [];
+    if (slotMode === 'custom' && !customTitle.trim()) return [];
+    return checkClashes(targetDays);
+  }, [
+    isEditMode,
+    dayOfWeek,
+    selectedDays,
+    selectedClassId,
+    startTime,
+    endTime,
+    slotMode,
+    offeringId,
+    customTitle,
+    checkClashes,
+  ]);
 
   // Commit save to backend
-  const commitSave = async (daysToCommit: number[]) => {
+  const commitSave = async (daysToCommit: number[], allowClash: boolean = false) => {
     if (daysToCommit.length === 0) {
       setError('No days selected to schedule.');
       return;
@@ -399,6 +463,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           is_cancelled: isCancelled,
           publish_to_news: notifyAffected,
           notify_affected: notifyAffected,
+          allowClash,
         });
       } else {
         await onSave({
@@ -414,6 +479,7 @@ export const SlotForm: React.FC<SlotFormProps> = ({
           publish_to_news: notifyAffected,
           notify_affected: notifyAffected,
           days_of_week: daysToCommit,
+          allowClash,
         });
       }
     } catch (err: any) {
@@ -424,11 +490,10 @@ export const SlotForm: React.FC<SlotFormProps> = ({
     }
   };
 
-  // Form submit
+  // Form submit — never blocked by clashes; opens confirmation dialog if clashes exist
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setClashState(null);
 
     if (!selectedClassId) {
       setError('Please select a Class / Cohort Grade first.');
@@ -457,25 +522,35 @@ export const SlotForm: React.FC<SlotFormProps> = ({
       return;
     }
 
-    // Clash detection check
+    // Clash detection check: open confirmation dialog if clashes exist
     const clashes = checkClashes(targetDays);
     if (clashes.length > 0) {
       const clean = targetDays.filter((d) => !clashes.some((c) => c.day === d));
-      setClashState({ clashes, cleanDays: clean });
+      setClashState({ clashes, cleanDays: clean, allDays: targetDays });
       return;
     }
 
-    // No clashes: proceed immediately
-    await commitSave(targetDays);
+    // No clashes: proceed immediately with no dialog
+    await commitSave(targetDays, false);
   };
 
-  // Handle "Skip clashing days"
+  // Confirm "Add anyway" (saves all selected slots including clashing ones)
+  const handleConfirmAddAnyway = async () => {
+    if (!clashState) return;
+    const allDaysToSave = clashState.allDays;
+    setClashState(null);
+    await commitSave(allDaysToSave, true);
+  };
+
+  // Confirm "Add only non-clashing days" (when only some selected days clash)
   const handleSkipClashesAndSave = async () => {
     if (!clashState || clashState.cleanDays.length === 0) return;
     const clean = clashState.cleanDays;
     setClashState(null);
-    await commitSave(clean);
+    await commitSave(clean, false);
   };
+
+  const displayedClashes = clashState?.clashes || liveClashes;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -487,8 +562,8 @@ export const SlotForm: React.FC<SlotFormProps> = ({
         </div>
       )}
 
-      {/* Clash Detection Resolution Dialog/Banner */}
-      {clashState && (
+      {/* Non-Blocking Clash Detection Warning Banner */}
+      {displayedClashes.length > 0 && (
         <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-2xl space-y-3 animate-in fade-in">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0">
@@ -496,16 +571,16 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             </div>
             <div>
               <h4 className="text-xs font-black text-amber-950 dark:text-amber-200 uppercase tracking-wide">
-                Schedule Clashes Detected ({clashState.clashes.length})
+                Schedule Clashes Detected ({displayedClashes.length})
               </h4>
               <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                The following {clashState.clashes.length === 1 ? 'day already has' : 'days already have'} an overlapping class scheduled:
+                The following {displayedClashes.length === 1 ? 'day already has' : 'days already have'} an overlapping class scheduled:
               </p>
             </div>
           </div>
 
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {clashState.clashes.map((c, i) => (
+            {displayedClashes.map((c, i) => (
               <div
                 key={i}
                 className="p-2.5 bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-800/80 rounded-xl text-xs text-slate-800 dark:text-slate-200"
@@ -520,35 +595,136 @@ export const SlotForm: React.FC<SlotFormProps> = ({
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-800/60">
-            <button
-              type="button"
-              onClick={() => setClashState(null)}
-              className="px-3.5 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-neutral-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50 transition-colors cursor-pointer text-center"
-            >
-              Cancel
-            </button>
-            {clashState.cleanDays.length > 0 ? (
-              <button
-                type="button"
-                onClick={handleSkipClashesAndSave}
-                disabled={isSaving}
-                className="px-4 py-2 text-xs font-extrabold rounded-xl bg-[#F4C430] hover:bg-[#e0b328] text-slate-950 shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {isSaving && <Loader2 size={13} className="animate-spin shrink-0" />}
-                <span>
-                  Skip Clashing Days & Add {clashState.cleanDays.length}{' '}
-                  {clashState.cleanDays.length === 1 ? 'Slot' : 'Slots'}
-                </span>
-              </button>
-            ) : (
-              <div className="text-[11px] font-bold text-red-600 dark:text-red-400 self-center">
-                All selected days clash. Please adjust times or choose different days.
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/60">
+            <div className="text-[11px] font-bold text-amber-900 dark:text-amber-300 self-center">
+              Clashes found. You&apos;ll be asked to confirm when saving.
+            </div>
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog when Saving with Clashes */}
+      {clashState &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clash-confirm-dialog-title"
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isSaving) {
+                setClashState(null);
+              }
+            }}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Dialog Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-neutral-800 bg-amber-50/70 dark:bg-amber-950/30 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertTriangle size={18} strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3
+                      id="clash-confirm-dialog-title"
+                      className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 leading-snug"
+                    >
+                      Schedule clash detected
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
+                      {clashState.clashes.length === 1
+                        ? '1 selected slot overlaps with an existing scheduled class.'
+                        : `${clashState.clashes.length} selected slots overlap with existing scheduled classes.`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClashState(null)}
+                  disabled={isSaving}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Dialog Body: List of clashing slots */}
+              <div className="p-4 sm:p-5 space-y-2.5 overflow-y-auto flex-1">
+                {clashState.clashes.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-amber-50/60 dark:bg-neutral-800/70 border border-amber-200 dark:border-amber-800/70 rounded-xl space-y-1.5 text-xs"
+                  >
+                    <div className="font-extrabold text-amber-950 dark:text-amber-200">
+                      {c.summary} {c.detail}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar size={11} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>{c.dayName}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock size={11} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>{c.timeRange}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <User size={11} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>{c.instructorName}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <BookOpen size={11} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>
+                          {c.clashingSubject}
+                          {c.clashingClassName ? ` (${c.clashingClassName})` : ''}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dialog Footer Actions */}
+              <div className="p-4 sm:p-5 bg-slate-50 dark:bg-neutral-900 border-t border-slate-200 dark:border-neutral-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setClashState(null)}
+                  disabled={isSaving}
+                  className="px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+
+                {clashState.cleanDays.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSkipClashesAndSave}
+                    disabled={isSaving}
+                    className="px-4 py-2.5 text-xs font-bold rounded-xl border border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
+                  >
+                    {isSaving && <Loader2 size={13} className="animate-spin shrink-0" />}
+                    <span>Add only non-clashing days</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleConfirmAddAnyway}
+                  disabled={isSaving}
+                  className="px-5 py-2.5 text-xs font-extrabold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
+                >
+                  {isSaving && <Loader2 size={14} className="animate-spin shrink-0" />}
+                  <span>Add anyway</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* ── STEP 1: Class and Stream ── */}
       <div className="p-4 bg-slate-50/80 dark:bg-neutral-800/40 border border-slate-200/80 dark:border-neutral-800 rounded-2xl space-y-3">

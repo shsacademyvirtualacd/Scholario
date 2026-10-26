@@ -628,21 +628,43 @@ export async function getSlotsForStudent(studentId: string): Promise<ClassSlot[]
 }
 
 /** Admin: upsert a class slot */
-export async function upsertSlot(slot: Partial<ClassSlot> & { offering_id?: string | null; custom_title?: string | null; class_id?: string | null; stream_id?: string | null }): Promise<ClassSlot> {
+export async function upsertSlot(
+  slot: Partial<ClassSlot> & {
+    offering_id?: string | null;
+    custom_title?: string | null;
+    class_id?: string | null;
+    stream_id?: string | null;
+    allowClash?: boolean;
+  },
+  _options?: { allowClash?: boolean }
+): Promise<ClassSlot> {
+  const { allowClash: _allowClash, ...cleanSlot } = slot as any;
   const { data, error } = await (supabase as any)
     .from('class_slots')
-    .upsert(slot as any)
+    .upsert(cleanSlot)
     .select()
     .single();
   return throwOnError(data, error, 'upsertSlot') as ClassSlot;
 }
 
 /** Admin: batch upsert multiple class slots in a single operation */
-export async function upsertSlots(slots: Array<Partial<ClassSlot> & { offering_id?: string | null; custom_title?: string | null; class_id?: string | null; stream_id?: string | null }>): Promise<ClassSlot[]> {
+export async function upsertSlots(
+  slots: Array<
+    Partial<ClassSlot> & {
+      offering_id?: string | null;
+      custom_title?: string | null;
+      class_id?: string | null;
+      stream_id?: string | null;
+      allowClash?: boolean;
+    }
+  >,
+  _options?: { allowClash?: boolean }
+): Promise<ClassSlot[]> {
   if (!slots.length) return [];
+  const cleanSlots = slots.map(({ allowClash: _allowClash, ...rest }: any) => rest);
   const { data, error } = await (supabase as any)
     .from('class_slots')
-    .upsert(slots as any)
+    .upsert(cleanSlots)
     .select();
   return throwOnError(data, error, 'upsertSlots') as ClassSlot[];
 }
